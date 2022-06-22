@@ -26,9 +26,9 @@ Use the (in the easiest case imported) QSF-file as reference for the dataset hea
 
 The script with all analyses run for the paper. The execution of this script requires R. It was tested with R version `4.2.0` running in [RStudio](https://www.rstudio.com/products/rstudio/download/) `2022.02.3 Build 492`. The following packages are needed to run the script: dplyr, AICcmodavg.
 
-## The Jupiter Notebook Script with Statistical Tests
+## The Jupyter Notebook Script with Statistical Tests
 
-This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupiter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results.
+This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupyter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results.
 
 ## The Codebook for the Qualitative Analyses
 
