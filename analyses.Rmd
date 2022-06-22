@@ -1,0 +1,741 @@
+---
+title: "pwdm_analyses"
+output: html_document
+---
+
+Copyright © 2022 Peter Mayer, Collins W. Munyendo, Michelle L. Mazurek, and Adam J. Aviv
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Packages
+library(dplyr)
+library(AICcmodavg)
+
+# Working Directory
+knitr::opts_knit$set(root.dir = file.path("./"))
+```
+
+
+```{r read in data and exclusion of invalid cases}
+# Read in data
+data_complete <- read.csv("data_cleaned.csv",header=TRUE,sep=";",stringsAsFactors=TRUE,check.names = FALSE)
+
+# Exlcude answers
+excluded_IDs_invalid_responses <- c("R_3fvnZ2tMIK8CTq3", "R_2coM9bJevimmYpG", "R_2ZVPjMUZF2CTvGk")
+excluded_IDs_empty_cells <- c("R_2TnSUF7noksmvvo")
+excluded_IDs <- c(excluded_IDs_invalid_responses, excluded_IDs_empty_cells)
+data_post_exclusion <- data_complete[!data_complete$ResponseId %in% excluded_IDs,]
+```
+
+
+```{r prepare STEFDATT variables}
+# Security
+##########
+data_post_exclusion$STEFDATT_security_num[data_post_exclusion$Q11_1 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_security_num[data_post_exclusion$Q11_1 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_security_num[data_post_exclusion$Q11_1 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_security_num[data_post_exclusion$Q11_1 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_security_num[data_post_exclusion$Q11_1 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_security_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin security data
+data_post_exclusion$STEFDATT_security_binned[data_post_exclusion$STEFDATT_security_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_security_binned[data_post_exclusion$STEFDATT_security_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_security_binned.f <- factor(data_post_exclusion$STEFDATT_security_binned)
+data_post_exclusion$STEFDATT_security_binned.f <- relevel(data_post_exclusion$STEFDATT_security_binned.f, ref = "Not Agree")
+
+
+# Tranquility
+#############
+data_post_exclusion$STEFDATT_tranquility_num[data_post_exclusion$Q11_2 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_tranquility_num[data_post_exclusion$Q11_2 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_tranquility_num[data_post_exclusion$Q11_2 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_tranquility_num[data_post_exclusion$Q11_2 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_tranquility_num[data_post_exclusion$Q11_2 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_tranquility_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin tranquility data
+data_post_exclusion$STEFDATT_tranquility_binned[data_post_exclusion$STEFDATT_tranquility_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_tranquility_binned[data_post_exclusion$STEFDATT_tranquility_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_tranquility_binned.f <- factor(data_post_exclusion$STEFDATT_tranquility_binned)
+data_post_exclusion$STEFDATT_tranquility_binned.f <- relevel(data_post_exclusion$STEFDATT_tranquility_binned.f, ref = "Not Agree")
+
+
+# Fun
+#####
+data_post_exclusion$STEFDATT_fun_num[data_post_exclusion$Q11_3 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_fun_num[data_post_exclusion$Q11_3 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_fun_num[data_post_exclusion$Q11_3 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_fun_num[data_post_exclusion$Q11_3 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_fun_num[data_post_exclusion$Q11_3 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_fun_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin fun data
+data_post_exclusion$STEFDATT_fun_binned[data_post_exclusion$STEFDATT_fun_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_fun_binned[data_post_exclusion$STEFDATT_fun_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_fun_binned.f <- factor(data_post_exclusion$STEFDATT_fun_binned)
+data_post_exclusion$STEFDATT_fun_binned.f <- relevel(data_post_exclusion$STEFDATT_fun_binned.f, ref = "Not Agree")
+
+
+# Easy-to-use
+#############
+data_post_exclusion$STEFDATT_easy_num[data_post_exclusion$Q11_4 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_easy_num[data_post_exclusion$Q11_4 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_easy_num[data_post_exclusion$Q11_4 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_easy_num[data_post_exclusion$Q11_4 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_easy_num[data_post_exclusion$Q11_4 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_easy_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin easy-to-use data
+data_post_exclusion$STEFDATT_easy_binned[data_post_exclusion$STEFDATT_easy_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_easy_binned[data_post_exclusion$STEFDATT_easy_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_easy_binned.f <- factor(data_post_exclusion$STEFDATT_easy_binned)
+data_post_exclusion$STEFDATT_easy_binned.f <- relevel(data_post_exclusion$STEFDATT_easy_binned.f, ref = "Not Agree")
+
+
+# Difficult-to-use
+##################
+data_post_exclusion$STEFDATT_difficult_num[data_post_exclusion$Q11_5 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_difficult_num[data_post_exclusion$Q11_5 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_difficult_num[data_post_exclusion$Q11_5 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_difficult_num[data_post_exclusion$Q11_5 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_difficult_num[data_post_exclusion$Q11_5 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_difficult_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin difficult-to-use data
+data_post_exclusion$STEFDATT_difficult_binned[data_post_exclusion$STEFDATT_difficult_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_difficult_binned[data_post_exclusion$STEFDATT_difficult_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_difficult_binned.f <- factor(data_post_exclusion$STEFDATT_difficult_binned)
+data_post_exclusion$STEFDATT_difficult_binned.f <- relevel(data_post_exclusion$STEFDATT_difficult_binned.f, ref = "Not Agree")
+
+
+# Annoying
+##########
+data_post_exclusion$STEFDATT_annoying_num[data_post_exclusion$Q11_6 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_annoying_num[data_post_exclusion$Q11_6 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_annoying_num[data_post_exclusion$Q11_6 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_annoying_num[data_post_exclusion$Q11_6 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_annoying_num[data_post_exclusion$Q11_6 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_annoying_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin annoying data
+data_post_exclusion$STEFDATT_annoying_binned[data_post_exclusion$STEFDATT_annoying_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_annoying_binned[data_post_exclusion$STEFDATT_annoying_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_annoying_binned.f <- factor(data_post_exclusion$STEFDATT_annoying_binned)
+data_post_exclusion$STEFDATT_annoying_binned.f <- relevel(data_post_exclusion$STEFDATT_annoying_binned.f, ref = "Not Agree")
+
+
+# Transparency
+##############
+data_post_exclusion$STEFDATT_transparency_num[data_post_exclusion$Q11_7 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_transparency_num[data_post_exclusion$Q11_7 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_transparency_num[data_post_exclusion$Q11_7 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_transparency_num[data_post_exclusion$Q11_7 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_transparency_num[data_post_exclusion$Q11_7 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_transparency_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin transparency data
+data_post_exclusion$STEFDATT_transparency_binned[data_post_exclusion$STEFDATT_transparency_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_transparency_binned[data_post_exclusion$STEFDATT_transparency_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_transparency_binned.f <- factor(data_post_exclusion$STEFDATT_transparency_binned)
+data_post_exclusion$STEFDATT_transparency_binned.f <- relevel(data_post_exclusion$STEFDATT_transparency_binned.f, ref = "Not Agree")
+
+# Trust
+#######
+data_post_exclusion$STEFDATT_trust_num[data_post_exclusion$Q11_8 == "Strongly Disagree"] <- 1
+data_post_exclusion$STEFDATT_trust_num[data_post_exclusion$Q11_8 == "Somewhat Disagree"] <- 2
+data_post_exclusion$STEFDATT_trust_num[data_post_exclusion$Q11_8 == "Neither agree nor disagree"] <- 3
+data_post_exclusion$STEFDATT_trust_num[data_post_exclusion$Q11_8 == "Somewhat Agree"] <- 4
+data_post_exclusion$STEFDATT_trust_num[data_post_exclusion$Q11_8 == "Strongly Agree"] <- 5
+#hist(data_post_exclusion$STEFDATT_trust_num, breaks = c(0, 1, 2, 3, 4, 5))
+
+# Bin trust data
+data_post_exclusion$STEFDATT_trust_binned[data_post_exclusion$STEFDATT_trust_num %in% c(1,2,3)] <- "Not Agree"
+data_post_exclusion$STEFDATT_trust_binned[data_post_exclusion$STEFDATT_trust_num %in% c(4,5)] <- "Agree"
+data_post_exclusion$STEFDATT_trust_binned.f <- factor(data_post_exclusion$STEFDATT_trust_binned)
+data_post_exclusion$STEFDATT_trust_binned.f <- relevel(data_post_exclusion$STEFDATT_trust_binned.f, ref = "Not Agree")
+```
+
+
+```{r prepare role variable}
+# Binned into student and non-student; used in analyses
+data_post_exclusion$role[data_post_exclusion$A2 %in% c("Student")] <- "Student"
+data_post_exclusion$role[!(data_post_exclusion$A2 %in% c("Student"))] <- "Non-Student"
+data_post_exclusion$role.f <- factor(data_post_exclusion$role)
+
+# Binned into student, faculty/leadership, staff, and other/prefer not to disclose; used for demographics
+data_post_exclusion$role_ext[data_post_exclusion$A2 %in% c("Student")] <- "Student"
+data_post_exclusion$role_ext[(data_post_exclusion$A2 %in% c("Full-time Faculty", "Part-time/Adjunct Faculty", "Leadership (provost/dean/president’s office)"))] <- "Faculty/Leadership"
+data_post_exclusion$role_ext[(data_post_exclusion$A2 %in% c("Staff (non-faculty/administrative)"))] <- "Staff (non-faculty/administrative)"
+data_post_exclusion$role_ext[(data_post_exclusion$A2 %in% c("Prefer not to disclose", "Other"))] <- "Other/Prefer not to disclose"
+data_post_exclusion$role_ext.f <- factor(data_post_exclusion$role_ext)
+```
+
+
+```{r prepare SA-6 variable}
+# Item 1
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Strongly Disagree"] <- 1
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Disagree"] <- 2
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Somewhat Agree"] <- 5
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Agree"] <- 6
+data_post_exclusion$A71_num[data_post_exclusion$A7_1 == "Strongly Agree"] <- 7
+
+# Item 2
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Strongly Disagree"] <- 1
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Disagree"] <- 2
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Somewhat Agree"] <- 5
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Agree"] <- 6
+data_post_exclusion$A72_num[data_post_exclusion$A7_2 == "Strongly Agree"] <- 7
+
+# Item 3
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Strongly Disagree"] <- 1
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Disagree"] <- 2
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Somewhat Agree"] <- 5
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Agree"] <- 6
+data_post_exclusion$A73_num[data_post_exclusion$A7_3 == "Strongly Agree"] <- 7
+
+
+# Item 4
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Strongly Disagree"] <- 1
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Disagree"] <- 2
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Somewhat Agree"] <- 5
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Agree"] <- 6
+data_post_exclusion$A74_num[data_post_exclusion$A7_4 == "Strongly Agree"] <- 7
+
+# Item 5
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Strongly Disagree"] <- 1
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Disagree"] <- 2
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Somewhat Agree"] <- 5
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Agree"] <- 6
+data_post_exclusion$A75_num[data_post_exclusion$A7_5 == "Strongly Agree"] <- 7
+
+# Item 6
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Strongly Disagree"] <- 1
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Disagree"] <- 2
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Somewhat Disagree"] <- 3
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Neither agree nor disagree"] <- 4
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Somewhat Agree"] <- 5
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Agree"] <- 6
+data_post_exclusion$A76_num[data_post_exclusion$A7_6 == "Strongly Agree"] <- 7
+
+# Combine it
+for (i in 1:277) {
+  data_post_exclusion$SA6[i] <- mean(c(data_post_exclusion$A71_num[i], data_post_exclusion$A72_num[i], data_post_exclusion$A73_num[i], data_post_exclusion$A74_num[i], data_post_exclusion$A75_num[i], data_post_exclusion$A76_num[i]))
+}
+
+# Overall
+mean(data_post_exclusion$SA6)
+sd(data_post_exclusion$SA6)
+
+# per Role
+tapply(data_post_exclusion$SA6, data_post_exclusion$role_ext.f, mean)
+tapply(data_post_exclusion$SA6, data_post_exclusion$role_ext.f, sd)
+```
+
+
+```{r prepare Web Skills Index variable}
+# Advanced Search
+data_post_exclusion$A91_num[data_post_exclusion$A9_1 == "No understanding"] <- 1
+data_post_exclusion$A91_num[data_post_exclusion$A9_1 == "Low understanding"] <- 2
+data_post_exclusion$A91_num[data_post_exclusion$A9_1 == "Medium understanding"] <- 3
+data_post_exclusion$A91_num[data_post_exclusion$A9_1 == "High understanding"] <- 4
+data_post_exclusion$A91_num[data_post_exclusion$A9_1 == "Full Understanding"] <- 5
+
+# PDF
+data_post_exclusion$A92_num[data_post_exclusion$A9_2 == "No understanding"] <- 1
+data_post_exclusion$A92_num[data_post_exclusion$A9_2 == "Low understanding"] <- 2
+data_post_exclusion$A92_num[data_post_exclusion$A9_2 == "Medium understanding"] <- 3
+data_post_exclusion$A92_num[data_post_exclusion$A9_2 == "High understanding"] <- 4
+data_post_exclusion$A92_num[data_post_exclusion$A9_2 == "Full Understanding"] <- 5
+
+# Spyware
+data_post_exclusion$A93_num[data_post_exclusion$A9_3 == "No understanding"] <- 1
+data_post_exclusion$A93_num[data_post_exclusion$A9_3 == "Low understanding"] <- 2
+data_post_exclusion$A93_num[data_post_exclusion$A9_3 == "Medium understanding"] <- 3
+data_post_exclusion$A93_num[data_post_exclusion$A9_3 == "High understanding"] <- 4
+data_post_exclusion$A93_num[data_post_exclusion$A9_3 == "Full Understanding"] <- 5
+
+# Wiki
+data_post_exclusion$A94_num[data_post_exclusion$A9_4 == "No understanding"] <- 1
+data_post_exclusion$A94_num[data_post_exclusion$A9_4 == "Low understanding"] <- 2
+data_post_exclusion$A94_num[data_post_exclusion$A9_4 == "Medium understanding"] <- 3
+data_post_exclusion$A94_num[data_post_exclusion$A9_4 == "High understanding"] <- 4
+data_post_exclusion$A94_num[data_post_exclusion$A9_4 == "Full Understanding"] <- 5
+
+# Cache
+data_post_exclusion$A95_num[data_post_exclusion$A9_5 == "No understanding"] <- 1
+data_post_exclusion$A95_num[data_post_exclusion$A9_5 == "Low understanding"] <- 2
+data_post_exclusion$A95_num[data_post_exclusion$A9_5 == "Medium understanding"] <- 3
+data_post_exclusion$A95_num[data_post_exclusion$A9_5 == "High understanding"] <- 4
+data_post_exclusion$A95_num[data_post_exclusion$A9_5 == "Full Understanding"] <- 5
+
+# Phishing
+data_post_exclusion$A96_num[data_post_exclusion$A9_6 == "No understanding"] <- 1
+data_post_exclusion$A96_num[data_post_exclusion$A9_6 == "Low understanding"] <- 2
+data_post_exclusion$A96_num[data_post_exclusion$A9_6 == "Medium understanding"] <- 3
+data_post_exclusion$A96_num[data_post_exclusion$A9_6 == "High understanding"] <- 4
+data_post_exclusion$A96_num[data_post_exclusion$A9_6 == "Full Understanding"] <- 5
+
+for (i in 1:277) {
+  data_post_exclusion$WebSkillIndex[i] <- mean(c(data_post_exclusion$A91_num[i], data_post_exclusion$A92_num[i], data_post_exclusion$A93_num[i], data_post_exclusion$A94_num[i], data_post_exclusion$A95_num[i], data_post_exclusion$A96_num[i]))
+}
+
+# Overall
+mean(data_post_exclusion$WebSkillIndex)
+sd(data_post_exclusion$WebSkillIndex)
+
+# per Role
+tapply(data_post_exclusion$WebSkillIndex, data_post_exclusion$role_ext.f, mean)
+tapply(data_post_exclusion$WebSkillIndex, data_post_exclusion$role_ext.f, sd)
+```
+
+
+```{r prepare GW Password Security variable}
+data_post_exclusion$GWpwdSec[data_post_exclusion$Q6 == "Much less secure"] <- 1
+data_post_exclusion$GWpwdSec[data_post_exclusion$Q6 == "Somewhat less secure"] <- 2
+data_post_exclusion$GWpwdSec[data_post_exclusion$Q6 == "About equally secure"] <- 3
+data_post_exclusion$GWpwdSec[data_post_exclusion$Q6 == "Somewhat less secure"] <- 4
+data_post_exclusion$GWpwdSec[data_post_exclusion$Q6 == "Much more secure"] <- 5
+
+# "Unsure" responses are excluded
+data_post_exclusion$GWpwdSec_binned[data_post_exclusion$GWpwdSec %in% c(1,2,3)] <- "Not more secure"
+data_post_exclusion$GWpwdSec_binned[data_post_exclusion$GWpwdSec %in% c(4,5)] <- "More secure"
+data_post_exclusion$GWpwdSec_binned.f <- factor(data_post_exclusion$GWpwdSec_binned)
+data_post_exclusion$GWpwdSec_binned.f <- relevel(data_post_exclusion$GWpwdSec_binned.f, ref = "Not more secure")
+```
+
+
+```{r prepare password manager use variable}
+# Dichotomous
+data_post_exclusion$pwdm_use[data_post_exclusion$Q8 %in% c("I do not use a password manager.")] <- "No"
+data_post_exclusion$pwdm_use[!(data_post_exclusion$Q8 %in% c("I do not use a password manager."))] <- "Yes"
+data_post_exclusion$pwdm_use.f <- factor(data_post_exclusion$pwdm_use)
+data_post_exclusion$pwdm_use.f <- relevel(data_post_exclusion$pwdm_use.f, ref = "No")
+table(data_post_exclusion$pwdm_use.f)
+
+# Details retained
+data_post_exclusion$pwdm_use_binned[data_post_exclusion$Q8 %in% c("I do not use a password manager.")] <- "Do not use"
+data_post_exclusion$pwdm_use_binned[data_post_exclusion$Q8 %in% c("I save my passwords in the browser (for example, passwords saved in Chrome).")] <- "Browser"
+data_post_exclusion$pwdm_use_binned[data_post_exclusion$Q8 %in% c("I use a system provided password manager (for example, Apple's Keychain).")] <- "OS"
+data_post_exclusion$pwdm_use_binned[data_post_exclusion$Q8 %in% c("I use a third-party manager (for example, Lastpass or Onepass).")] <- "Third-party"
+data_post_exclusion$pwdm_use_binned[!(data_post_exclusion$Q8 %in% c("I do not use a password manager.", "I save my passwords in the browser (for example, passwords saved in Chrome).", "I use a system provided password manager (for example, Apple's Keychain).", "I use a third-party manager (for example, Lastpass or Onepass)."))] <- "Multiple"
+data_post_exclusion$pwdm_use_binned.f <- factor(data_post_exclusion$pwdm_use_binned)
+
+data_post_exclusion$pwdm_browser <- sapply(data_post_exclusion$Q8, function(x) grepl("browser", x, fixed = TRUE))
+data_post_exclusion$pwdm_system <- sapply(data_post_exclusion$Q8, function(x) grepl("system", x, fixed = TRUE))
+data_post_exclusion$pwdm_third_party <- sapply(data_post_exclusion$Q8, function(x) grepl("third-party", x, fixed = TRUE))
+```
+
+
+```{r prepare password generated by password manager variable}
+data_post_exclusion$pwdm_generated[data_post_exclusion$Q21 %in% c("")] <- NA
+data_post_exclusion$pwdm_generated[data_post_exclusion$Q21 %in% c("I let the password manager create and store the password")] <- "Yes"
+data_post_exclusion$pwdm_generated[!(data_post_exclusion$Q21 %in% c("I let the password manager create and store the password", ""))] <- "No"
+data_post_exclusion$pwdm_generated.f <- factor(data_post_exclusion$pwdm_generated)
+data_post_exclusion$pwdm_generated.f <- relevel(data_post_exclusion$pwdm_generated.f, ref = "No")
+```
+
+
+```{r prepare pwdm use in organisation variable}
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Extremely unlikely"] <- 1
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Moderately unlikely"] <- 2
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Slightly unlikely"] <- 3
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Neither likely nor unlikely"] <- 4
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Slightly likely"] <- 5
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Moderately likely"] <- 6
+data_post_exclusion$PWDMuseInOrg[data_post_exclusion$Q24 == "Extremely likely"] <- 7
+data_post_exclusion$PWDMuseInOrg.f <- factor(data_post_exclusion$Q24, levels=c("Extremely unlikely", "Moderately unlikely", "Slightly unlikely", "Neither likely nor unlikely", "Slightly likely", "Moderately likely", "Extremely likely"), ordered=TRUE)
+
+# Binning with "neither likely nor unlikely" sorted into "no" to not overestimate effet
+data_post_exclusion$PWDMuseInOrg_binned.f[data_post_exclusion$PWDMuseInOrg %in% c(1,2,3,4)] <- "No"
+data_post_exclusion$PWDMuseInOrg_binned.f[data_post_exclusion$PWDMuseInOrg %in% c(5,6,7)] <- "Yes"
+data_post_exclusion$PWDMuseInOrg_binned.f <- factor(data_post_exclusion$PWDMuseInOrg_binned.f)
+```
+
+
+```{r prepare pwdm awareness variable}
+data_post_exclusion$pwdm_awareness[data_post_exclusion$Q10 %in% c("I first heard about it in this study")] <- "No"
+data_post_exclusion$pwdm_awareness[!(data_post_exclusion$Q10 %in% c("I first heard about it in this study"))] <- "Yes"
+data_post_exclusion$pwdm_awareness.f <- factor(data_post_exclusion$pwdm_awareness)
+data_post_exclusion$pwdm_awareness.f <- relevel(data_post_exclusion$pwdm_awareness.f, ref = "No")
+```
+
+
+```{r prepare gender variable}
+# Drop prefer not to disclose & non-binary due to low counts
+data_post_exclusion$gender[data_post_exclusion$GENDER %in% c("Man")] <- "Man"
+data_post_exclusion$gender[data_post_exclusion$GENDER %in% c("Woman")] <- "Woman"
+data_post_exclusion$gender.f <- factor(data_post_exclusion$gender, ordered = FALSE)
+
+table(data_post_exclusion$GENDER, data_post_exclusion$role_ext.f, dnn = c("Gender", "Role"))/277
+```
+
+
+```{r prepare school variable}
+data_post_exclusion$school.f <- factor(data_post_exclusion$A1, ordered = FALSE)
+```
+
+
+```{r prepare ethnicity variables}
+data_post_exclusion$eth_hispanic[data_post_exclusion$ETH_HISP %in% c("No, not of Hispanic, Latino/a/x, or Spanish origin")] <- "No"
+data_post_exclusion$eth_hispanic[data_post_exclusion$ETH_HISP %in% c("Prefer not to disclose")] <- "Undisclosed"
+data_post_exclusion$eth_hispanic[!(data_post_exclusion$ETH_HISP %in% c("No, not of Hispanic, Latino/a/x, or Spanish origin", "Prefer not to disclose"))] <- "Yes"
+data_post_exclusion$eth_hispanic.f <- factor(data_post_exclusion$eth_hispanic, ordered = FALSE)
+
+table(data_post_exclusion$eth_hispanic.f,data_post_exclusion$role_ext.f)
+
+# Combine small counts into one "other" variable
+data_post_exclusion$eth_race[data_post_exclusion$ETH_R %in% c("White")] <- "White"
+data_post_exclusion$eth_race[data_post_exclusion$ETH_R %in% c("Black or African American")] <- "Black or African American"
+data_post_exclusion$eth_race[data_post_exclusion$ETH_R %in% c("Prefer not to disclose")] <- "Prefer not to disclose"
+data_post_exclusion$eth_race[!(data_post_exclusion$ETH_R %in% c("White", "Black or African American", "Prefer not to disclose"))] <- "Other"
+data_post_exclusion$eth_race.f <- factor(data_post_exclusion$eth_race, ordered = FALSE)
+
+data_eth_nohis <- subset(data_post_exclusion, eth_hispanic.f != "Yes")
+table(data_eth_nohis$eth_race.f,data_eth_nohis$role_ext.f)
+# n_faculty = 58
+# n_staff = 118
+```
+
+
+```{r binning of age variable}
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(18, 19, 20, 21, 22, 23, 24, 25)] <- "18-25"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(26, 27, 28, 29, 30, 31, 32, 33, 34, 35)] <- "26-35"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(36, 37, 38, 39, 40, 41, 42, 43, 44, 45)] <- "36-45"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(46, 47, 48, 49, 50, 51, 52, 53, 54, 55)] <- "46-55"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(56, 57, 58, 59, 60, 61, 63, 63, 64, 65)] <- "56-65"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_NUM %in% c(66, 67, 68, 71, 76, 82)] <- ">65"
+data_post_exclusion$age_binned[data_post_exclusion$AGE_ITEM %in% c("Prefer not to disclose")] <- "Prefer not to disclose"
+data_post_exclusion$age_binned.f <- factor(data_post_exclusion$age_binned)
+
+table(data_post_exclusion$age_binned.f, data_post_exclusion$role_ext.f, dnn = c("Age", "Role"))
+```
+
+
+```{r RQ-1 pwdm awareness regression}
+glm_pwdm_awareness <- glm(pwdm_awareness.f ~ SA6
+                                    + WebSkillIndex
+                                    + gender.f
+                                    + AGE_NUM,
+                               data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwdm_awareness)
+exp(summary(glm_pwdm_awareness)$coefficients[,1]["(Intercept)"])
+exp(summary(glm_pwdm_awareness)$coefficients[,1]["SA6"])
+exp(summary(glm_pwdm_awareness)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwdm_awareness)$coefficients[,1]["gender.fWoman"])
+exp(summary(glm_pwdm_awareness)$coefficients[,1]["AGE_NUM"])
+exp(confint(glm_pwdm_awareness))
+```
+
+
+```{r RQ-1 PM awareness of pm types}
+pm_types_data <- select(data_post_exclusion, ResponseId, RB, Q8)
+
+pm_types_data$pre_browser <- sapply(pm_types_data$RB, function(x) grepl("I saved my passwords in the browser (for example, passwords saved in Chrome)", x, fixed = TRUE))
+pm_types_data$pre_third_party <- sapply(pm_types_data$RB, function(x) grepl("I used a third-party password manager (for example, Lastpass or Onepass)", x, fixed = TRUE))
+pm_types_data$pre_system <- sapply(pm_types_data$RB, function(x) grepl("I used a system-provided password manager (for example, Apple's Keychain)", x, fixed = TRUE))
+
+pm_types_data$post_browser <- sapply(pm_types_data$Q8, function(x) grepl("I save my passwords in the browser (for example, passwords saved in Chrome).", x, fixed = TRUE))
+pm_types_data$post_third_party <- sapply(pm_types_data$Q8, function(x) grepl("I use a third-party manager (for example, Lastpass or Onepass).", x, fixed = TRUE))
+pm_types_data$post_system <- sapply(pm_types_data$Q8, function(x) grepl("I use a system provided password manager (for example, Apple's Keychain).", x, fixed = TRUE))
+
+# Changes in stated usage
+pm_types_data$browser_change <- with(pm_types_data, ifelse(pre_browser != post_browser, ifelse(pre_browser, "Pre only", "Post only"), ifelse(pre_browser,"No change (use)","No change (non-use)")))
+table(pm_types_data$browser_change)
+
+pm_types_data$third_party_change <- with(pm_types_data, ifelse(pre_third_party != post_third_party, ifelse(pre_third_party, "Pre only", "Post only"), ifelse(pre_third_party,"No change (use)","No change (non-use)")))
+table(pm_types_data$third_party_change)
+
+pm_types_data$system_change <- with(pm_types_data, ifelse(pre_system != post_system, ifelse(pre_system, "Pre only", "Post only"), ifelse(pre_system,"No change (use)","No change (non-use)")))
+table(pm_types_data$system_change)
+
+pm_types_data$any_change <- with(pm_types_data, browser_change != "No change" | third_party_change != "No change" | system_change != "No change")
+table(pm_types_data$any_change)
+
+pm_types_data$num_changes <- with(pm_types_data, (browser_change != "No change") + (third_party_change != "No change") + (system_change != "No change"))
+table(pm_types_data$num_changes)
+```
+
+
+```{r RQ-2 password management strategies}
+general_strategies_data_merged <- select(data_post_exclusion, ResponseId, RB, Q8)
+
+general_strategies_data_merged$memory <- sapply(general_strategies_data_merged$RB, function(x) grepl("I remembered my passwords without writing them down or storing them digitally", x, fixed = TRUE))
+general_strategies_data_merged$reset <- sapply(general_strategies_data_merged$RB, function(x) grepl("I reset my password every time I log in rather than remembering my password", x, fixed = TRUE))
+general_strategies_data_merged$file <- sapply(general_strategies_data_merged$RB, function(x) grepl("I stored my passwords in a digital file or files", x, fixed = TRUE))
+general_strategies_data_merged$physical <- sapply(general_strategies_data_merged$RB, function(x) grepl("I wrote my passwords down on paper or other physical media.", x, fixed = TRUE))
+general_strategies_data_merged$browser <- sapply(general_strategies_data_merged$Q8, function(x) grepl("I save my passwords in the browser (for example, passwords saved in Chrome).", x, fixed = TRUE))
+general_strategies_data_merged$third_party <- sapply(general_strategies_data_merged$Q8, function(x) grepl("I use a third-party manager (for example, Lastpass or Onepass).", x, fixed = TRUE))
+general_strategies_data_merged$system <- sapply(general_strategies_data_merged$Q8, function(x) grepl("I use a system provided password manager (for example, Apple's Keychain).", x, fixed = TRUE))
+general_strategies_data_merged$none <- sapply(general_strategies_data_merged$Q8, function(x) grepl("None of the above", x, fixed = TRUE))
+
+general_strategies_data_merged$any_pm <- with(general_strategies_data_merged, browser | third_party | system)
+
+sprintf("Memorize %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$memory), sum(general_strategies_data_merged$memory)/277*100)
+sprintf("Reset %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$reset), sum(general_strategies_data_merged$reset)/277*100)
+sprintf("File %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$file), sum(general_strategies_data_merged$file)/277*100)
+sprintf("Physical %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$physical), sum(general_strategies_data_merged$physical)/277*100)
+sprintf("Browser %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$browser), sum(general_strategies_data_merged$browser)/277*100)
+sprintf("Third-party %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$third_party), sum(general_strategies_data_merged$third_party)/277*100)
+sprintf("System %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$system), sum(general_strategies_data_merged$system)/277*100)
+sprintf("Any PM %1$1.0f (%2$2.1f%%)", sum(general_strategies_data_merged$any_pm), sum(general_strategies_data_merged$any_pm)/277*100)
+
+# Which PMs
+
+general_strategies_data_merged$pm_name_other <-data_post_exclusion$Q19_12_TEXT
+# R_33kW4DWtY4YMotC uses Edge -> Browser
+# R_3qJcsl9WKi0Sc1w uses RoboForm -> Third-party
+# R_25A74UJr5HYyc6o uses Edge, Safari -> Browser
+# R_3J1TlT9YyW2zE0d uses Keeper -> Third-party
+# R_cCHIV1eOzQBtMRP uses Roboform -> Third-party
+# R_3dJSttncu8L5sbf uses Passwordsafe -> Third-party
+# R_3R1S0QqNzzZ8JYM uses Passwordsafe -> Third-party
+# R_3I66B9kzz5QfRpD uses Safari -> Browser
+# R_cwlAXy5XmFBeDp7 uses Bitwarden -> Third-party
+# R_12x4LuIhxOzKfgK uses Norton/Lifelock -> Third-party
+# R_ZKnL98YqiLLVgTn uses "My own in the google sheets apple. It is connected to my gmail and I can see on my phone."
+
+# Close-up on reset
+general_strategies_data_merged$num_stra_wo_reset <- with(general_strategies_data_merged, memory + file + physical + browser + third_party + system)
+table(general_strategies_data_merged$num_stra_wo_reset, general_strategies_data_merged$reset)
+
+# General numbers
+general_strategies_data_merged$num_stra <- with(general_strategies_data_merged, memory + file + physical + browser + third_party + system + reset)
+mean(general_strategies_data_merged$num_stra)
+sd(general_strategies_data_merged$num_stra)
+table(general_strategies_data_merged$num_stra)
+
+```
+
+
+```{r RQ-2 usage of sync}
+rq2_sync_data <- dplyr::select(data_post_exclusion, ResponseId, DF1, DF2, SB1, TP1, OS1)
+
+# file
+table(rq2_sync_data$DF1, rq2_sync_data$DF2, dnn = c("manual", "tool"))
+
+# os
+table(rq2_sync_data$OS1)
+
+# browser
+table(rq2_sync_data$SB1)
+
+# 3rd party
+table(rq2_sync_data$TP1)
+```
+
+
+```{r RQ-2 reuse}
+table(data_post_exclusion$CB3)
+```
+
+
+```{r RQ-2 PM generation}
+pwd_generation_data <- select(data_post_exclusion, ResponseId, Q21, Q8)
+
+pwd_generation_data$browser <- sapply(pwd_generation_data$Q8, function(x) grepl("I save my passwords in the browser (for example, passwords saved in Chrome).", x, fixed = TRUE))
+pwd_generation_data$third_party <- sapply(pwd_generation_data$Q8, function(x) grepl("I use a third-party manager (for example, Lastpass or Onepass).", x, fixed = TRUE))
+pwd_generation_data$system <- sapply(pwd_generation_data$Q8, function(x) grepl("I use a system provided password manager (for example, Apple's Keychain).", x, fixed = TRUE))
+
+table(pwd_generation_data$Q21)
+table(pwd_generation_data$Q21,pwd_generation_data$browser)
+table(pwd_generation_data$Q21,pwd_generation_data$third_party)
+table(pwd_generation_data$Q21,pwd_generation_data$system)
+```
+
+
+```{r RQ-2 regression password generated by pwdm}
+glm_pwd_generated <- glm(pwdm_generated.f ~ SA6
+                                    + WebSkillIndex
+                                    + STEFDATT_security_binned.f 
+                                    + STEFDATT_tranquility_binned.f 
+                                    + STEFDATT_fun_binned.f 
+                                    + STEFDATT_easy_binned.f
+                                    + STEFDATT_difficult_binned.f
+                                    + STEFDATT_annoying_binned.f
+                                    + STEFDATT_transparency_binned.f
+                                    + STEFDATT_trust_binned.f
+                                    + GWpwdSec_binned.f,
+                                  data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwd_generated)
+exp(summary(glm_pwd_generated)$coefficients[,1]["(Intercept)"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["SA6"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_security_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_tranquility_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_fun_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_easy_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_difficult_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_annoying_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_transparency_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["STEFDATT_trust_binned.fAgree"])
+exp(summary(glm_pwd_generated)$coefficients[,1]["GWpwdSec_binned.fMore secure"])
+exp(confint(glm_pwd_generated))
+```
+
+
+```{r RQ-2 regression pwdm use}
+glm_pwd_use <- glm(pwdm_use.f ~ SA6
+                                    + WebSkillIndex
+                                    + STEFDATT_security_binned.f 
+                                    + STEFDATT_tranquility_binned.f 
+                                    + STEFDATT_fun_binned.f 
+                                    + STEFDATT_easy_binned.f
+                                    + STEFDATT_difficult_binned.f
+                                    + STEFDATT_annoying_binned.f
+                                    + STEFDATT_transparency_binned.f
+                                    + STEFDATT_trust_binned.f
+                                    + GWpwdSec_binned.f
+                                    + role.f, #Role
+                        data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwd_use)
+exp(summary(glm_pwd_use)$coefficients[,1]["(Intercept)"])
+exp(summary(glm_pwd_use)$coefficients[,1]["SA6"])
+exp(summary(glm_pwd_use)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_security_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_tranquility_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_fun_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_easy_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_difficult_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_annoying_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_transparency_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["STEFDATT_trust_binned.fAgree"])
+exp(summary(glm_pwd_use)$coefficients[,1]["GWpwdSec_binned.fMore secure"])
+exp(summary(glm_pwd_use)$coefficients[,1]["role.fStudent"])
+exp(confint(glm_pwd_use))
+```
+
+
+```{r RQ-2 regression browser pwdm use}
+glm_pwd_browser <- glm(pwdm_browser ~ SA6
+                                    + WebSkillIndex
+                                    + STEFDATT_security_binned.f 
+                                    + STEFDATT_tranquility_binned.f 
+                                    + STEFDATT_fun_binned.f 
+                                    + STEFDATT_easy_binned.f
+                                    + STEFDATT_difficult_binned.f
+                                    + STEFDATT_annoying_binned.f
+                                    + STEFDATT_transparency_binned.f
+                                    + STEFDATT_trust_binned.f
+                                    + GWpwdSec_binned.f
+                                    + role.f
+                                    + gender.f,
+                   data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwd_browser)
+exp(summary(glm_pwd_browser)$coefficients[,1]["(Intercept)"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["SA6"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_security_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_tranquility_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_fun_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_easy_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_difficult_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_annoying_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_transparency_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["STEFDATT_trust_binned.fAgree"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["GWpwdSec_binned.fMore secure"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["role.fStudent"])
+exp(summary(glm_pwd_browser)$coefficients[,1]["gender.fWoman"])
+exp(confint(glm_pwd_browser))
+```
+
+
+```{r RQ-2 regression third-party pwdm use}
+glm_pwd_third_party <- glm(pwdm_third_party ~ SA6
+                                    + WebSkillIndex
+                                    + STEFDATT_security_binned.f 
+                                    + STEFDATT_tranquility_binned.f 
+                                    + STEFDATT_fun_binned.f 
+                                    + STEFDATT_easy_binned.f
+                                    + STEFDATT_difficult_binned.f
+                                    + STEFDATT_annoying_binned.f
+                                    + STEFDATT_transparency_binned.f
+                                    + STEFDATT_trust_binned.f
+                                    + GWpwdSec_binned.f
+                                    + role.f, #Role
+                        data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwd_third_party)
+exp(abs(summary(glm_pwd_third_party)$coefficients[,1]["(Intercept)"]))
+exp(summary(glm_pwd_third_party)$coefficients[,1]["SA6"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_security_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_tranquility_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_fun_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_easy_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_difficult_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_annoying_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_transparency_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["STEFDATT_trust_binned.fAgree"])
+exp(summary(glm_pwd_third_party)$coefficients[,1]["GWpwdSec_binned.fMore secure"])
+exp(abs(summary(glm_pwd_third_party)$coefficients[,1]["role.fStudent"]))
+exp(confint(glm_pwd_third_party))
+```
+
+
+```{r RQ-2 regression system pwdm use}
+glm_pwd_system <- glm(pwdm_system ~ SA6
+                                    + WebSkillIndex
+                                    + STEFDATT_security_binned.f 
+                                    + STEFDATT_tranquility_binned.f 
+                                    + STEFDATT_fun_binned.f 
+                                    + STEFDATT_easy_binned.f
+                                    + STEFDATT_difficult_binned.f
+                                    + STEFDATT_annoying_binned.f
+                                    + STEFDATT_transparency_binned.f
+                                    + STEFDATT_trust_binned.f
+                                    + role.f, #Role
+                        data=data_post_exclusion, family="binomial"
+)
+summary(glm_pwd_system)
+exp(summary(glm_pwd_system)$coefficients[,1]["(Intercept)"])
+exp(summary(glm_pwd_system)$coefficients[,1]["SA6"])
+exp(summary(glm_pwd_system)$coefficients[,1]["WebSkillIndex"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_security_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_tranquility_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_fun_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_easy_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_difficult_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_annoying_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_transparency_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["STEFDATT_trust_binned.fAgree"])
+exp(summary(glm_pwd_system)$coefficients[,1]["role.fStudent"])
+exp(confint(glm_pwd_system))
+```
+
+
+```{r RQ-3 autofill for uni account}
+table(data_post_exclusion$Q5)
+```
+
+
+```{r RQ-4 motivators and barriers descriptives}
+# n=212
+
+# motivators
+sort(table(data_post_exclusion$Q22)/212, decreasing = TRUE)
+
+# barriers
+sort(table(data_post_exclusion$Q23)/212, decreasing = TRUE)
+```
