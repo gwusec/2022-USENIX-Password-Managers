@@ -5,6 +5,7 @@ This repo contains supplemental material to aid in the replication of our study 
 * The survey as QSF-file
 * Data set cleaned from identifiable information
 * The analysis script for the quantitative analyses
+* The Jupiter Notebook script for the chi-squared test
 * The codebook for the qualitative analyses
 
 ## The Survey As QSF-File
