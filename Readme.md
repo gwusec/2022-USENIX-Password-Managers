@@ -1,6 +1,6 @@
 # Why Users (Don't) Use Password Managers at a Large Educational Institution -Supplemental material
 
-This repo contains supplemental material to aid in the replication of our study as it was submitted to the [artifact evaluation process of USENIX Security](https://www.usenix.org/conference/usenixsecurity22/call-for-artifacts). Specifically, the following four items can be found in this repo:
+This repository contains supplemental material to aid in the replication of our study as it was submitted to the [artifact evaluation process of USENIX Security](https://www.usenix.org/conference/usenixsecurity22/call-for-artifacts). Specifically, the following four items can be found in this repo:
 
 * The survey as QSF-file
 * Data set cleaned from identifiable information
