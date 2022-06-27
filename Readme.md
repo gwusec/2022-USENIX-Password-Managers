@@ -24,11 +24,11 @@ Use the (in the easiest case imported) QSF-file as reference for the dataset hea
 
 ## The Analysis Script for the Quantitative Analyses
 
-The script with all analyses run for the paper. The execution of this script requires R. It was tested with R version `4.2.0` running in [RStudio](https://www.rstudio.com/products/rstudio/download/) `2022.02.3 Build 492`. The following packages are needed to run the script: dplyr (tested with version `1.0.9`), AICcmodavg (tested with version `2.3-1`).
+The script with all analyses run for the paper. The execution of this script requires R. It was tested with R version `4.2.0` running in [RStudio](https://www.rstudio.com/products/rstudio/download/) `2022.02.3 Build 492`. The following packages are needed to run the script: dplyr, AICcmodavg.
 
 ## The Jupyter Notebook Script with Statistical Tests
 
-This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupyter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results.
+This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupyter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results. Jupyter Notebook version 6.4.8, running on [Anaconda navigator](https://www.anaconda.com/products/distribution) version 2.2.0 was used for this analysis. Python version 3.9.12 was used.
 
 ## The Codebook for the Qualitative Analyses
 
