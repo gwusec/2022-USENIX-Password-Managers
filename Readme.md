@@ -24,7 +24,7 @@ Use the (in the easiest case imported) QSF-file as reference for the dataset hea
 
 ## The Analysis Script for the Quantitative Analyses
 
-The script with all analyses run for the paper. The execution of this script requires R. It was tested with R version `4.2.0` running in [RStudio](https://www.rstudio.com/products/rstudio/download/) `2022.02.3 Build 492`. The following packages are needed to run the script: dplyr, AICcmodavg.
+The script with all analyses run for the paper. The execution of this script requires R. It was tested with R version `4.2.0` running in [RStudio](https://www.rstudio.com/products/rstudio/download/) `2022.02.3 Build 492`. The following packages are needed to run the script: dplyr (tested with version `1.0.9`), AICcmodavg (tested with version `2.3-1`).
 
 ## The Jupyter Notebook Script with Statistical Tests
 
