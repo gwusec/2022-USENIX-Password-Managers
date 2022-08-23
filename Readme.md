@@ -22,7 +22,7 @@ The data set is in CSV format, but using [semicolons](https://projectsemicolon.c
 read.csv("data_cleaned.csv",header=TRUE,sep=";",stringsAsFactors=TRUE,check.names = FALSE)
 ```
 
-For reference a tab-separated version of the data file is provided as well. The file `data_field_labels.xlsx` can be used as reference for the data column labels in the data file.
+For reference (and convenience) a tab-separated version of the data file is provided as well. The file `data_field_labels.xlsx` can be used as reference for the data column labels in the data file.
 
 
 ## The Analysis Script for the Quantitative Analyses
