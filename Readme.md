@@ -34,7 +34,7 @@ Running a chunk can be achieved in RStudio in three ways. Firstly, RStudio provi
 
 ## The Jupyter Notebook Script with Statistical Tests
 
-This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupyter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results. Jupyter Notebook version `6.4.8`, running on [Anaconda navigator](https://www.anaconda.com/products/distribution) version `2.2.0` was used for this analysis. Python version `3.9.12` was used.
+This script will perform a chi-squared test for password re-use across different techniques, followed by a post-hoc analysis. Using Jupyter Notebook, browse and open the file chi_test.ipynb and run it and it should print out the results. Jupyter Notebook version `6.4.8`, running on [Anaconda navigator](https://www.anaconda.com/products/distribution) version `2.2.0` was used for this analysis. Python version `3.9.12` was used. In addition to having Python installed, the following packages need to be installed to run the script: pandas, numpy, scipy, statsmodels.
 
 
 ## The Codebook for the Qualitative Analyses
